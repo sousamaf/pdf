@@ -72,7 +72,7 @@ def info(filesname, console = None):
             else:
                 print("Erro ao tentar abrir o arquivo: {}".format(filename))
 
-def resize2A2(filesname, size_type, console = None):
+def resize2A2(filesname, size_type, tmpdir = "", console = None):
     for filename in filesname:
         src = fitz.open(filename)
         doc = fitz.open()
@@ -87,7 +87,7 @@ def resize2A2(filesname, size_type, console = None):
         new_filename = "{}_{}".format(size_type, filename)
         doc.save(new_filename)
         # print("\nNovo arquivo!", end=" ")
-        info([new_filename])
+        info([new_filename], console = console)
 
 def get_filesname(pdfargs):
     filesname = []

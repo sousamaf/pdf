@@ -13,10 +13,10 @@ from PyPDF2 import PdfFileReader, PdfFileMerger
 from rich.panel import Panel
 from rich.console import Console
 from rich.progress import Progress
-console = Console()
+
 load_dotenv()
 
-def submit_to_alfresco(alfresco_dir_name, file_name):
+def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
     options = {
         'webdav_hostname': os.environ.get('webdav_hostname'), 
         'webdav_login': os.environ.get('webdav_login'), 
@@ -33,7 +33,8 @@ def submit_to_alfresco(alfresco_dir_name, file_name):
 def pdf_details_update( file_input, 
                         author = "", 
                         title = "",
-                        subtitle = ""
+                        subtitle = "",
+                        console = None
                     ):
     file_in = open(file_input, 'rb')
     pdf_reader = PdfFileReader(file_in)
@@ -53,14 +54,15 @@ def pdf_details_update( file_input,
     file_in.close()
     file_out.close()
 
-def merge_pages(livro, pagina, termo_inicial, termo_final):
+def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
     arq_t = 2
     arq = 1
 
     letra = "a"
 
     # arquivos = list(range(int(arq),arq + int(arq_t),1))
-    console.log(f"[green]Coletando número de termos[/green]")
+    if console:
+        console.log(f"[green]Coletando número de termos[/green]")
     output_files = ["{}{}.pdf".format(pagina,'a'), "{}{}.pdf".format(pagina,'b')]
     output_files_a2 = ["a2_{}".format(file_name) for file_name in output_files]
     output_files_min_a2 = ["min_a2_{}".format(file_name) for file_name in output_files]
@@ -75,32 +77,37 @@ def merge_pages(livro, pagina, termo_inicial, termo_final):
 
     # make a temporary dir and process all the files.
     with tempfile.TemporaryDirectory() as tmpdirname:
-        console.log(f"[green]Criação de espaço de trabalho temporário[/green]: {tmpdirname}")
+        if console:
+            console.log(f"[green]Criação de espaço de trabalho temporário[/green]: {tmpdirname}")
+            console.log(f"[green]Redimensionando página[/green]")
         # print('created temporary directory', tmpdirname)
-        console.log(f"[green]Redimensionando página[/green]")
         # print('Resize all page to A2:')
         resize2A2(output_files, 'a2', tmpdirname, console = console)
         
         os.chdir(tmpdirname)
-        console.log(f"[green]Compactando arquivo[/green]")
+        if console:
+            console.log(f"[green]Compactando arquivo[/green]")
         for i, v in enumerate(output_files_a2):
             compress(v, output_files_min_a2[i], power=3, console = console)
         
         pdf_merge(output_files_min_a2, 'livro_pagina.pdf')
         
         final_file_name = "Livro {} p{}.pdf".format(livro, pagina)
-        console.log(f"[green]Atualizando metadados do arquivo[/green]")
+        if console:
+            console.log(f"[green]Atualizando metadados do arquivo[/green]")
         pdf_details_update("livro_pagina.pdf", 
                             author = "Marco Antonio", 
                             title = final_file_name,
-                            subtitle = output_registros_text)
+                            subtitle = output_registros_text,
+                            console = console)
         
         final_path_file_name = os.path.join(local_dir, final_file_name)
-        console.log(f"[green]Finalizando arquivo e copiando do espaço temporário[/green]")
+        if console:
+            console.log(f"[green]Finalizando arquivo e copiando do espaço temporário[/green]")
         shutil.copy2('new_livro_pagina.pdf', final_path_file_name)
         os.chdir(local_dir)
 
-def main():
+def main(console):
     parser = argparse.ArgumentParser()
     parser.add_argument("--livro", "-L", help="Código do livro. Por exemplo: 3-G.", type=str, required=True)
     parser.add_argument("--pagina", "-P", help="Página do livro.", type=str, required=True)
@@ -109,10 +116,23 @@ def main():
     parser.add_argument("--ALF", "-ALF", help="Após confirmação, enviará a transcrição para o Alfresco.", nargs='?', type=str)
     args = parser.parse_args()
 
-    # console.log(os.environ.get('webdav_hostname'))
+    livro = args.livro
+    pagina = args.pagina
+    termo_inicial = args.termoinicial
+    termo_final = args.termofinal
+
+    merge_pages(livro, pagina, termo_inicial, termo_final, console = console)
+
+    if args.ALF:
+        dirAlfresco = str("Sites/swsdp/documentLibrary/Registro de Imóveis/Transcrições das Transmissões/Livro {}/".format(args.livro))
+        file_name = "Livro {} p{}.pdf".format(livro, pagina)
+        alfresco = True
+        # print("Alfresco:", dirAlfresco)
+        submit_to_alfresco(dirAlfresco, file_name, console = console)
 
 if __name__ == '__main__':
+    console = Console()
     console.log(f'[bold][red]Iniciando a composição do arquivo.')
     with console.status("[bold green] Processando...") as status:
-        main()
+        main(console)
     console.log(f'[bold][red]Processamento concluído!')
