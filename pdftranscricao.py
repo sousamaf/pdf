@@ -16,6 +16,20 @@ from rich.progress import Progress
 console = Console()
 load_dotenv()
 
+def submit_to_alfresco(alfresco_dir_name, file_name):
+    options = {
+        'webdav_hostname': os.environ.get('webdav_hostname'), 
+        'webdav_login': os.environ.get('webdav_login'), 
+        'webdav_password': os.environ.get('webdav_password')
+    }
+    console.log(options)
+    client = Client(options)
+    paraSalvarAlfresco = "{}{}".format(alfresco_dir_name, file_name)
+    if console:
+        console.log("[green]{}[/green]".format(paraSalvarAlfresco))
+    # print("        :", paraSalvarAlfresco)
+    # client.upload_sync(remote_path=paraSalvarAlfresco, local_path=paraSalvarPDF)
+
 def pdf_details_update( file_input, 
                         author = "", 
                         title = "",
@@ -95,7 +109,7 @@ def main():
     parser.add_argument("--ALF", "-ALF", help="Após confirmação, enviará a transcrição para o Alfresco.", nargs='?', type=str)
     args = parser.parse_args()
 
-    console.log(os.environ.get('webdav_hostname'))
+    # console.log(os.environ.get('webdav_hostname'))
 
 if __name__ == '__main__':
     console.log(f'[bold][red]Iniciando a composição do arquivo.')
