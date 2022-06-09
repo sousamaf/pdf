@@ -40,7 +40,7 @@ def compress(input_file_path, output_file_path, power=0, console = None):
     # Check if valid path
     if not os.path.isfile(input_file_path):
         if console:
-            console.print("Error: invalid path for input PDF file")
+            console.log("Error: invalid path for input PDF file")
         else:
             print("Error: invalid path for input PDF file")
         sys.exit(1)
@@ -48,13 +48,13 @@ def compress(input_file_path, output_file_path, power=0, console = None):
     # Check if file is a PDF by extension
     if input_file_path.split('.')[-1].lower() != 'pdf':
         if console:
-            console.print("Error: input file is not a PDF")
+            console.log("Error: input file is not a PDF")
         else:
             print("Error: input file is not a PDF")
         sys.exit(1)
 
     if console:
-        console.print("Compress PDF...")
+        console.log("Compress PDF...")
     else:
         print("Compress PDF...")
     initial_size = os.path.getsize(input_file_path)
@@ -71,9 +71,9 @@ def compress(input_file_path, output_file_path, power=0, console = None):
     final_size = os.path.getsize(output_file_path)
     ratio = 1 - (final_size / initial_size)
     if console:
-        console.print("Compression by {0:.0%}.".format(ratio))
-        console.print("Final file size is {0:.1f}MB".format(final_size / 1000000))
-        console.print("Done.")
+        console.log("Compression by {0:.0%}.".format(ratio))
+        console.log("Final file size is {0:.1f}MB".format(final_size / 1000000))
+        console.log("Done.")
     else:
         print("Compression by {0:.0%}.".format(ratio))
         print("Final file size is {0:.1f}MB".format(final_size / 1000000))
