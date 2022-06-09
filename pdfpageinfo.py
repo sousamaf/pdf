@@ -85,6 +85,9 @@ def resize2A2(filesname, size_type, tmpdir = "", console = None):
             page.show_pdf_page(page.rect, src, ipage.number)
 
         new_filename = "{}_{}".format(size_type, filename)
+        if len(tmpdir) > 0:
+            new_filename = os.path.join(tmpdir, new_filename)
+
         doc.save(new_filename)
         # print("\nNovo arquivo!", end=" ")
         info([new_filename], console = console)
