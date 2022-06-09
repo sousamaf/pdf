@@ -1,8 +1,10 @@
 import os
+import glob
 import shutil
 import argparse
 import tempfile
 import subprocess
+from sys import platform
 from dotenv import load_dotenv
 from pdftools import pdf_merge
 from pdfcompress import compress
@@ -16,19 +18,47 @@ from rich.progress import Progress
 
 load_dotenv()
 
+def show_message(message = "", console = None):
+    if os.environ.get('VERBOSE') == 'enable':
+        if console:
+            console.log(message)
+        else:
+            print(message)
+
+
+def find_av_from_current_dir(registros, console = None):
+    console.log("[green]Buscando av.[/green]")
+    files = []
+    files_card = []
+    files_min_card = []
+
+    local_dir = os.getcwd()
+    for i, v in enumerate(registros):
+        full_path = os.path.join(local_dir, "av{}.pdf".format(v))
+        if len(glob.glob(full_path)) > 0:
+            full_path_card = "card-5x7_av{}.pdf".format(v)
+            full_path_min_card = "min_card-5x7_av{}.pdf".format(v)
+            
+            files.append(full_path)
+            files_card.append(full_path_card)
+            files_min_card.append(full_path_min_card)
+            console.log("[green]Av encontrada:[/green] {}".format(full_path))
+            # show_message(message = "[green]Av encontrada:[/green] {}".format(full_path))
+    return [files, files_card, files_min_card]
+
 def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
     options = {
         'webdav_hostname': os.environ.get('webdav_hostname'), 
         'webdav_login': os.environ.get('webdav_login'), 
         'webdav_password': os.environ.get('webdav_password')
     }
-    console.log(options)
     client = Client(options)
     paraSalvarAlfresco = "{}{}".format(alfresco_dir_name, file_name)
+    paraSalvarPDF = os.path.join(os.getcwd(), file_name)
     if console:
         console.log("[green]{}[/green]".format(paraSalvarAlfresco))
     # print("        :", paraSalvarAlfresco)
-    # client.upload_sync(remote_path=paraSalvarAlfresco, local_path=paraSalvarPDF)
+    client.upload_sync(remote_path=paraSalvarAlfresco, local_path=paraSalvarPDF)
 
 def pdf_details_update( file_input, 
                         author = "", 
@@ -45,8 +75,9 @@ def pdf_details_update( file_input,
     pdf_meta_merger.append(file_in)
     pdf_meta_merger.addMetadata({
         '/Author': author,
-        '/Title': title,
-        '/Subtitle' : subtitle,
+        '/Title': subtitle,
+        '/Subtitle' : title + subtitle,
+        '/Description' : subtitle,
     })
     file_out = open("new_{}".format(file_input), 'wb')
     pdf_meta_merger.write(file_out)
@@ -75,6 +106,9 @@ def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
 
     local_dir = os.getcwd()
 
+    ## av
+    avs, avs_card, avs_min_card = find_av_from_current_dir(registros, console = console)
+
     # make a temporary dir and process all the files.
     with tempfile.TemporaryDirectory() as tmpdirname:
         if console:
@@ -84,12 +118,20 @@ def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
         # print('Resize all page to A2:')
         resize2A2(output_files, 'a2', tmpdirname, console = console)
         
+        # avs
+        if len(avs) > 0:
+            resize2A2(avs, 'card-5x7', tmpdirname, console = console)
+        
         os.chdir(tmpdirname)
         if console:
             console.log(f"[green]Compactando arquivo[/green]")
         for i, v in enumerate(output_files_a2):
             compress(v, output_files_min_a2[i], power=3, console = console)
         
+        for i, v in enumerate(avs):
+            compress(avs, avs_card[i], power=3, console = console)
+            output_files_min_a2.append(avs_min_card[i])
+
         pdf_merge(output_files_min_a2, 'livro_pagina.pdf')
         
         final_file_name = "Livro {} p{}.pdf".format(livro, pagina)
@@ -97,7 +139,7 @@ def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
             console.log(f"[green]Atualizando metadados do arquivo[/green]")
         pdf_details_update("livro_pagina.pdf", 
                             author = "Marco Antonio", 
-                            title = final_file_name,
+                            title = final_file_name.replace(".pdf", " "),
                             subtitle = output_registros_text,
                             console = console)
         
