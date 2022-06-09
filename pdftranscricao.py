@@ -39,6 +39,53 @@ def pdf_details_update( file_input,
     file_in.close()
     file_out.close()
 
+def merge_pages(livro, pagina, termo_inicial, termo_final):
+    arq_t = 2
+    arq = 1
+
+    letra = "a"
+
+    # arquivos = list(range(int(arq),arq + int(arq_t),1))
+    console.log(f"[green]Coletando número de termos[/green]")
+    output_files = ["{}{}.pdf".format(pagina,'a'), "{}{}.pdf".format(pagina,'b')]
+    output_files_a2 = ["a2_{}".format(file_name) for file_name in output_files]
+    output_files_min_a2 = ["min_a2_{}".format(file_name) for file_name in output_files]
+
+    output_files_text_min_a2 = " ".join(str(s) for s in output_files_min_a2)
+
+    registros = list(range(int(termo_inicial),int(termo_final+1),1))
+    output_registros = ["Termo {}".format(reg) for reg in registros ]
+    output_registros_text = " ".join(str(s) for s in output_registros)
+
+    local_dir = os.getcwd()
+
+    # make a temporary dir and process all the files.
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        console.log(f"[green]Criação de espaço de trabalho temporário[/green]: {tmpdirname}")
+        # print('created temporary directory', tmpdirname)
+        console.log(f"[green]Redimensionando página[/green]")
+        # print('Resize all page to A2:')
+        resize2A2(output_files, 'a2', tmpdirname, console = console)
+        
+        os.chdir(tmpdirname)
+        console.log(f"[green]Compactando arquivo[/green]")
+        for i, v in enumerate(output_files_a2):
+            compress(v, output_files_min_a2[i], power=3, console = console)
+        
+        pdf_merge(output_files_min_a2, 'livro_pagina.pdf')
+        
+        final_file_name = "Livro {} p{}.pdf".format(livro, pagina)
+        console.log(f"[green]Atualizando metadados do arquivo[/green]")
+        pdf_details_update("livro_pagina.pdf", 
+                            author = "Marco Antonio", 
+                            title = final_file_name,
+                            subtitle = output_registros_text)
+        
+        final_path_file_name = os.path.join(local_dir, final_file_name)
+        console.log(f"[green]Finalizando arquivo e copiando do espaço temporário[/green]")
+        shutil.copy2('new_livro_pagina.pdf', final_path_file_name)
+        os.chdir(local_dir)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--livro", "-L", help="Código do livro. Por exemplo: 3-G.", type=str, required=True)
