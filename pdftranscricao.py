@@ -160,8 +160,7 @@ def main(console):
     parser.add_argument("--pagina", "-P", help="Página do livro.", type=str, required=True)
     parser.add_argument("--termoinicial", "-TI", help="Primeiro Termo completo na página.", type=int, required=True)
     parser.add_argument("--termofinal", "-TF", help="Último termo terminado na página.", type=int, required=True)
-    parser.add_argument("--PUB", "-PUB", help="Após confirmação, enviará o \
-        documento final para NAS e Alfresco.", nargs='?', type=str)
+    parser.add_argument("--PUB", "-PUB", help="Após confirmação, enviará o documento final para NAS e Alfresco.", nargs='?', type=str)
     args = parser.parse_args()
 
     livro = args.livro
