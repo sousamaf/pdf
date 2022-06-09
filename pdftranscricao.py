@@ -16,6 +16,29 @@ from rich.progress import Progress
 console = Console()
 load_dotenv()
 
+def pdf_details_update( file_input, 
+                        author = "", 
+                        title = "",
+                        subtitle = ""
+                    ):
+    file_in = open(file_input, 'rb')
+    pdf_reader = PdfFileReader(file_in)
+    metadata = pdf_reader.getDocumentInfo()
+    # pprint.pprint(metadata)
+
+    pdf_meta_merger = PdfFileMerger()
+    pdf_meta_merger.append(file_in)
+    pdf_meta_merger.addMetadata({
+        '/Author': author,
+        '/Title': title,
+        '/Subtitle' : subtitle,
+    })
+    file_out = open("new_{}".format(file_input), 'wb')
+    pdf_meta_merger.write(file_out)
+
+    file_in.close()
+    file_out.close()
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--livro", "-L", help="Código do livro. Por exemplo: 3-G.", type=str, required=True)
