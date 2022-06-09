@@ -15,6 +15,7 @@ from PyPDF2 import PdfFileReader, PdfFileMerger
 from rich.panel import Panel
 from rich.console import Console
 from rich.progress import Progress
+from rich.prompt import Confirm
 
 load_dotenv()
 
@@ -38,8 +39,8 @@ def find_av_from_current_dir(registros, console = None):
         if len(glob.glob(full_path)) > 0:
             full_path_card = "card-5x7_av{}.pdf".format(v)
             full_path_min_card = "min_card-5x7_av{}.pdf".format(v)
-            
-            files.append(full_path)
+
+            files.append(os.path.basename(full_path))
             files_card.append(full_path_card)
             files_min_card.append(full_path_min_card)
             console.log("[green]Av encontrada:[/green] {}".format(full_path))
@@ -48,8 +49,8 @@ def find_av_from_current_dir(registros, console = None):
 
 def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
     options = {
-        'webdav_hostname': os.environ.get('webdav_hostname'), 
-        'webdav_login': os.environ.get('webdav_login'), 
+        'webdav_hostname': os.environ.get('webdav_hostname'),
+        'webdav_login': os.environ.get('webdav_login'),
         'webdav_password': os.environ.get('webdav_password')
     }
     client = Client(options)
@@ -60,8 +61,8 @@ def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
     # print("        :", paraSalvarAlfresco)
     client.upload_sync(remote_path=paraSalvarAlfresco, local_path=paraSalvarPDF)
 
-def pdf_details_update( file_input, 
-                        author = "", 
+def pdf_details_update( file_input,
+                        author = "",
                         title = "",
                         subtitle = "",
                         console = None
@@ -77,7 +78,8 @@ def pdf_details_update( file_input,
         '/Author': author,
         '/Title': subtitle,
         '/Subtitle' : title + subtitle,
-        '/Description' : subtitle,
+        '/Description' : title + subtitle,
+        '/Subject': title + subtitle,
     })
     file_out = open("new_{}".format(file_input), 'wb')
     pdf_meta_merger.write(file_out)
@@ -113,41 +115,44 @@ def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
     with tempfile.TemporaryDirectory() as tmpdirname:
         if console:
             console.log(f"[green]Criação de espaço de trabalho temporário[/green]: {tmpdirname}")
-            console.log(f"[green]Redimensionando página[/green]")
+            console.log(f"[green]Redimensionando páginas[/green]")
         # print('created temporary directory', tmpdirname)
         # print('Resize all page to A2:')
         resize2A2(output_files, 'a2', tmpdirname, console = console)
-        
+
         # avs
         if len(avs) > 0:
             resize2A2(avs, 'card-5x7', tmpdirname, console = console)
-        
+
         os.chdir(tmpdirname)
         if console:
-            console.log(f"[green]Compactando arquivo[/green]")
+            console.log(f"[green]Compactando arquivos[/green]")
         for i, v in enumerate(output_files_a2):
             compress(v, output_files_min_a2[i], power=3, console = console)
-        
-        for i, v in enumerate(avs):
-            compress(avs, avs_card[i], power=3, console = console)
+
+        for i, v in enumerate(avs_card):
+            compress(v, avs_min_card[i], power=3, console = console)
             output_files_min_a2.append(avs_min_card[i])
 
         pdf_merge(output_files_min_a2, 'livro_pagina.pdf')
-        
-        final_file_name = "Livro {} p{}.pdf".format(livro, pagina)
+
+        final_file_name = "Livro {} p{} {}.pdf".format(livro, pagina,
+        output_registros_text)
+
         if console:
-            console.log(f"[green]Atualizando metadados do arquivo[/green]")
-        pdf_details_update("livro_pagina.pdf", 
-                            author = "Marco Antonio", 
+            console.log(f"[green]Atualizando metadados do arquivo final.[/green]")
+        pdf_details_update("livro_pagina.pdf",
+                            author = "Marco Antonio",
                             title = final_file_name.replace(".pdf", " "),
                             subtitle = output_registros_text,
                             console = console)
-        
+
         final_path_file_name = os.path.join(local_dir, final_file_name)
         if console:
             console.log(f"[green]Finalizando arquivo e copiando do espaço temporário[/green]")
         shutil.copy2('new_livro_pagina.pdf', final_path_file_name)
         os.chdir(local_dir)
+        return final_file_name
 
 def main(console):
     parser = argparse.ArgumentParser()
@@ -155,7 +160,8 @@ def main(console):
     parser.add_argument("--pagina", "-P", help="Página do livro.", type=str, required=True)
     parser.add_argument("--termoinicial", "-TI", help="Primeiro Termo completo na página.", type=int, required=True)
     parser.add_argument("--termofinal", "-TF", help="Último termo terminado na página.", type=int, required=True)
-    parser.add_argument("--ALF", "-ALF", help="Após confirmação, enviará a transcrição para o Alfresco.", nargs='?', type=str)
+    parser.add_argument("--PUB", "-PUB", help="Após confirmação, enviará o \
+        documento final para NAS e Alfresco.", nargs='?', type=str)
     args = parser.parse_args()
 
     livro = args.livro
@@ -163,18 +169,22 @@ def main(console):
     termo_inicial = args.termoinicial
     termo_final = args.termofinal
 
-    merge_pages(livro, pagina, termo_inicial, termo_final, console = console)
+    console.log(f'[bold][red]Iniciando a composição do arquivo.')
+    final_file_name = merge_pages(livro, pagina, termo_inicial, termo_final, console = console)
 
-    if args.ALF:
-        dirAlfresco = str("Sites/swsdp/documentLibrary/Registro de Imóveis/Transcrições das Transmissões/Livro {}/".format(args.livro))
-        file_name = "Livro {} p{}.pdf".format(livro, pagina)
-        alfresco = True
-        # print("Alfresco:", dirAlfresco)
-        submit_to_alfresco(dirAlfresco, file_name, console = console)
+    if args.PUB:
+        status.update("[red]Publicar arquivo no NAS e Alfresco? Y ou n[/]")
+        if Confirm.ask("[red]Publicar arquivo no NAS e Alfresco? Y ou n[/]"):
+            console.log("[green]Publicando.[/]")
+            path_on_alfresco = os.environ.get('PATH_ON_ALFRESCO')
+            path_on_nas = os.environ.get('PATH_ON_NAS')
+
+            dirAlfresco = str(path_on_alfresco.format(args.livro))
+            #submit_to_alfresco(dirAlfresco, final_file_name, console = console)
+            #shutil.copy2(final_file_name, path_on_nas)
 
 if __name__ == '__main__':
     console = Console()
-    console.log(f'[bold][red]Iniciando a composição do arquivo.')
     with console.status("[bold green] Processando...") as status:
         main(console)
     console.log(f'[bold][red]Processamento concluído!')
