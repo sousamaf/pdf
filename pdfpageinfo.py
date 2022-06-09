@@ -3,10 +3,12 @@
     Como gerar o executável:
     pyinstaller --onefile pdfpageinfo.py 
 '''
-
+import os
 import sys
 import argparse
 import fitz 
+from rich.console import Console
+
 
 def get_valid_format(value):
     valid_format = []
@@ -27,32 +29,50 @@ def get_valid_format(value):
     valid_format.append("tabloid-extra")
 
     if value is None:
-        print("Formato de destino: a2")
+        if console:
+            console.log("[green]Definindo a dimensão da folha:[/green] a2")
+        else:    
+            print("Definindo a dimensão da folha: a2")
         return "a2"
 
     if value.lower() in valid_format:
-        print("Formato de destino: {}".format(value.lower()))
+        if console:
+            console.log("[green]Definindo a dimensão da folha:[/green] {}".format(value.lower()))
+        else:
+            print("Formato de destino: {}".format(value.lower()))
         return value
     else:
-        print("Formato não reconhecido. Será utilizado o formato de destino padrão: a2")
+        if console:
+            console.log("[red]Formato não reconhecido.[/red] Será utilizado o formato de destino padrão: a2")
+        else:
+            print("Formato não reconhecido. Será utilizado o formato de destino padrão: a2")
         return "a2"
 
 def pixel2cm(value):
     return (value / 72) * 2.54
 
-def info(filesname):
+def info(filesname, console = None):
     for filename in filesname:
         try:
-            print("Obtendo metadados do arquivo: {}".format(filename))
+            if console:
+                console.log("[green]Obtendo metadados do arquivo:[/green] {}".format(filename))
+            else:
+                print("Obtendo metadados do arquivo: {}".format(filename))
             doc = fitz.open(filename)
             for i in range(doc.pageCount):
                 page = doc.load_page(i)
-                print("Página {}: {} cm x {} cm".format(i, pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
+                if console:
+                    console.log("[green]Página {}:[/green] {} cm x {} cm.".format(i, pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
+                else:
+                    print("Página {}: {} cm x {} cm".format(i, pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
             #print(dir(doc))
         except:
-            print("Erro ao tentar abrir o arquivo: {}".format(filename))
+            if console:
+                console.log("[green]Erro ao tentar abrir o arquivo:[/green] {}".format(filename))
+            else:
+                print("Erro ao tentar abrir o arquivo: {}".format(filename))
 
-def resize2A2(filesname, size_type):
+def resize2A2(filesname, size_type, console = None):
     for filename in filesname:
         src = fitz.open(filename)
         doc = fitz.open()
@@ -66,7 +86,7 @@ def resize2A2(filesname, size_type):
 
         new_filename = "{}_{}".format(size_type, filename)
         doc.save(new_filename)
-        print("\nNovo arquivo!", end=" ")
+        # print("\nNovo arquivo!", end=" ")
         info([new_filename])
 
 def get_filesname(pdfargs):
