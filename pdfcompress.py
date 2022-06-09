@@ -4,7 +4,7 @@
 # MIT license -- free to use as you want, cheers.
 '''
     Como gerar o executável:
-    pyinstaller --onefile matriculas_gerar_imagens.py 
+    pyinstaller --onefile matriculas_gerar_imagens.py
 '''
 
 """
@@ -24,9 +24,9 @@ import subprocess
 import os.path
 import sys
 from shutil import copyfile
+from rich.console import Console
 
-
-def compress(input_file_path, output_file_path, power=0):
+def compress(input_file_path, output_file_path, power=0, console = None):
     """Function to compress PDF via Ghostscript command line interface"""
     quality = {
         0: '/default',
@@ -39,19 +39,28 @@ def compress(input_file_path, output_file_path, power=0):
     # Basic controls
     # Check if valid path
     if not os.path.isfile(input_file_path):
-        print("Error: invalid path for input PDF file")
+        if console:
+            console.print("Error: invalid path for input PDF file")
+        else:
+            print("Error: invalid path for input PDF file")
         sys.exit(1)
 
     # Check if file is a PDF by extension
     if input_file_path.split('.')[-1].lower() != 'pdf':
-        print("Error: input file is not a PDF")
+        if console:
+            console.print("Error: input file is not a PDF")
+        else:
+            print("Error: input file is not a PDF")
         sys.exit(1)
 
-    print("Compress PDF...")
+    if console:
+        console.print("Compress PDF...")
+    else:
+        print("Compress PDF...")
     initial_size = os.path.getsize(input_file_path)
     if os.name == 'nt':
         gs_platform = 'gswin64'
-    else: 
+    else:
         gs_platform = 'gs'
     subprocess.call([gs_platform, '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.4',
                     '-dPDFSETTINGS={}'.format(quality[power]),
@@ -61,10 +70,14 @@ def compress(input_file_path, output_file_path, power=0):
     )
     final_size = os.path.getsize(output_file_path)
     ratio = 1 - (final_size / initial_size)
-    print("Compression by {0:.0%}.".format(ratio))
-    print("Final file size is {0:.1f}MB".format(final_size / 1000000))
-    print("Done.")
-
+    if console:
+        console.print("Compression by {0:.0%}.".format(ratio))
+        console.print("Final file size is {0:.1f}MB".format(final_size / 1000000))
+        console.print("Done.")
+    else:
+        print("Compression by {0:.0%}.".format(ratio))
+        print("Final file size is {0:.1f}MB".format(final_size / 1000000))
+        print("Done.")
 
 def main():
     parser = argparse.ArgumentParser(
