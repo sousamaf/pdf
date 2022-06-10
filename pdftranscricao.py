@@ -17,7 +17,13 @@ from rich.console import Console
 from rich.progress import Progress
 from rich.prompt import Confirm
 
-load_dotenv()
+'''
+    Como gerar o executável:
+    pyinstaller --onefile pdftranscricao.py
+'''
+
+home = os.environ.get("HOME")
+load_dotenv(dotenv_path=os.path.join(home, ".env"))
 
 def show_message(message = "", console = None):
     if os.environ.get('VERBOSE') == 'enable':
@@ -44,22 +50,30 @@ def find_av_from_current_dir(registros, console = None):
             files_card.append(full_path_card)
             files_min_card.append(full_path_min_card)
             console.log("[green]Av encontrada:[/green] {}".format(full_path))
-            # show_message(message = "[green]Av encontrada:[/green] {}".format(full_path))
+            
     return [files, files_card, files_min_card]
 
 def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
     options = {
-        'webdav_hostname': os.environ.get('webdav_hostname'),
-        'webdav_login': os.environ.get('webdav_login'),
-        'webdav_password': os.environ.get('webdav_password')
+        'webdav_hostname': os.environ.get('PDF_WEBDAV_HOSTNAME'),
+        'webdav_login': os.environ.get('PDF_WEBDAV_LOGIN'),
+        'webdav_password': os.environ.get('PDF_WEBDAV_PASSWORD')
     }
     client = Client(options)
     paraSalvarAlfresco = "{}{}".format(alfresco_dir_name, file_name)
     paraSalvarPDF = os.path.join(os.getcwd(), file_name)
     if console:
         console.log("[green]{}[/green]".format(paraSalvarAlfresco))
-    # print("        :", paraSalvarAlfresco)
+    print(paraSalvarAlfresco)
     client.upload_sync(remote_path=paraSalvarAlfresco, local_path=paraSalvarPDF)
+
+def copy_to_nas(livro, file_name):
+    path_on_nas_folder = os.environ.get('PATH_ON_NAS_FOLDER').format(livro)
+    print(path_on_nas_folder)
+
+    shutil.copy2(file_name, path_on_nas_folder)
+
+
 
 def pdf_details_update( file_input,
                         author = "",
@@ -70,14 +84,13 @@ def pdf_details_update( file_input,
     file_in = open(file_input, 'rb')
     pdf_reader = PdfFileReader(file_in)
     metadata = pdf_reader.getDocumentInfo()
-    # pprint.pprint(metadata)
 
     pdf_meta_merger = PdfFileMerger()
     pdf_meta_merger.append(file_in)
     pdf_meta_merger.addMetadata({
         '/Author': author,
-        '/Title': subtitle,
-        '/Subtitle' : title + subtitle,
+        '/Title': title,
+        '/Subtitle' : subtitle,
         '/Description' : title + subtitle,
         '/Subject': title + subtitle,
     })
@@ -91,9 +104,6 @@ def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
     arq_t = 2
     arq = 1
 
-    letra = "a"
-
-    # arquivos = list(range(int(arq),arq + int(arq_t),1))
     if console:
         console.log(f"[green]Coletando número de termos[/green]")
     output_files = ["{}{}.pdf".format(pagina,'a'), "{}{}.pdf".format(pagina,'b')]
@@ -172,15 +182,16 @@ def main(console):
     final_file_name = merge_pages(livro, pagina, termo_inicial, termo_final, console = console)
 
     if args.PUB:
-        status.update("[red]Publicar arquivo no NAS e Alfresco? Y ou n[/]")
-        if Confirm.ask("[red]Publicar arquivo no NAS e Alfresco? Y ou n[/]"):
+        status.update("[red]Publicar arquivo no NAS e Alfresco?[/red]")
+        if Confirm.ask(""):
             console.log("[green]Publicando.[/]")
-            path_on_alfresco = os.environ.get('PATH_ON_ALFRESCO')
-            path_on_nas = os.environ.get('PATH_ON_NAS')
+            path_on_alfresco = os.environ.get('PDF_PATH_ON_ALFRESCO')
 
-            dirAlfresco = str(path_on_alfresco.format(args.livro))
-            #submit_to_alfresco(dirAlfresco, final_file_name, console = console)
-            #shutil.copy2(final_file_name, path_on_nas)
+            dirAlfresco = str(path_on_alfresco.format(livro))
+            submit_to_alfresco(dirAlfresco, final_file_name, console = console)
+            copy_to_nas(livro, final_file_name)
+        else:
+            console.log("[red]Gerou apenas arquivo local.[/red]")
 
 if __name__ == '__main__':
     console = Console()
