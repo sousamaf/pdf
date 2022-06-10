@@ -50,7 +50,7 @@ def find_av_from_current_dir(registros, console = None):
             files_card.append(full_path_card)
             files_min_card.append(full_path_min_card)
             console.log("[green]Av encontrada:[/green] {}".format(full_path))
-            
+
     return [files, files_card, files_min_card]
 
 def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
@@ -64,12 +64,12 @@ def submit_to_alfresco(alfresco_dir_name, file_name, console = None):
     paraSalvarPDF = os.path.join(os.getcwd(), file_name)
     if console:
         console.log("[green]{}[/green]".format(paraSalvarAlfresco))
-    print(paraSalvarAlfresco)
+    #print(paraSalvarAlfresco)
     client.upload_sync(remote_path=paraSalvarAlfresco, local_path=paraSalvarPDF)
 
 def copy_to_nas(livro, file_name):
     path_on_nas_folder = os.environ.get('PATH_ON_NAS_FOLDER').format(livro)
-    print(path_on_nas_folder)
+    #print(path_on_nas_folder)
 
     shutil.copy2(file_name, path_on_nas_folder)
 
@@ -100,13 +100,18 @@ def pdf_details_update( file_input,
     file_in.close()
     file_out.close()
 
-def merge_pages(livro, pagina, termo_inicial, termo_final, console = None):
+def merge_pages(livro, pagina, termo_inicial, termo_final, dupla = False, console = None):
     arq_t = 2
     arq = 1
 
     if console:
         console.log(f"[green]Coletando número de termos[/green]")
     output_files = ["{}{}.pdf".format(pagina,'a'), "{}{}.pdf".format(pagina,'b')]
+    if dupla:
+        pagina2 = int(pagina) + 1
+        output_files.append("{}{}.pdf".format(pagina2,'a'))
+        output_files.append("{}{}.pdf".format(pagina2,'b'))
+
     output_files_a2 = ["a2_{}".format(file_name) for file_name in output_files]
     output_files_min_a2 = ["min_a2_{}".format(file_name) for file_name in output_files]
 
@@ -170,6 +175,7 @@ def main(console):
     parser.add_argument("--pagina", "-P", help="Página do livro.", type=str, required=True)
     parser.add_argument("--termoinicial", "-TI", help="Primeiro Termo completo na página.", type=int, required=True)
     parser.add_argument("--termofinal", "-TF", help="Último termo terminado na página.", type=int, required=True)
+    parser.add_argument("--dupla", help="Folha dupla", action = 'store_true')
     parser.add_argument("--PUB", "-PUB", help="Após confirmação, enviará o documento final para NAS e Alfresco.", nargs='?', type=str)
     args = parser.parse_args()
 
@@ -177,10 +183,12 @@ def main(console):
     pagina = args.pagina
     termo_inicial = args.termoinicial
     termo_final = args.termofinal
+    dupla = False
+    if args.dupla:
+        dupla = True
 
     console.log(f'[bold][red]Iniciando a composição do arquivo.')
-    final_file_name = merge_pages(livro, pagina, termo_inicial, termo_final, console = console)
-
+    final_file_name = merge_pages(livro, pagina, termo_inicial, termo_final, dupla = dupla, console = console)
     if args.PUB:
         status.update("[red]Publicar arquivo no NAS e Alfresco?[/red]")
         if Confirm.ask(""):
