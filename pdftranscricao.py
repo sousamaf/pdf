@@ -20,6 +20,9 @@ from rich.prompt import Confirm
 '''
     Como gerar o executável:
     pyinstaller --onefile pdftranscricao.py
+
+
+    update using: https://pypdf2.readthedocs.io/en/latest/user/merging-pdfs.html
 '''
 
 home = os.environ.get("HOME")
