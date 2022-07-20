@@ -56,21 +56,15 @@ def info(filesname, console = None):
         try:
             if console:
                 console.log("[green]Obtendo metadados do arquivo:[/green] {}".format(filename))
-            else:
-                print("Obtendo metadados do arquivo: {}".format(filename))
             doc = fitz.open(filename)
             for i in range(doc.pageCount):
                 page = doc.load_page(i)
                 if console:
                     console.log("[green]Página {}:[/green] {} cm x {} cm.".format(i, pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
-                else:
-                    print("Página {}: {} cm x {} cm".format(i, pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
             #print(dir(doc))
         except:
             if console:
                 console.log("[green]Erro ao tentar abrir o arquivo:[/green] {}".format(filename))
-            else:
-                print("Erro ao tentar abrir o arquivo: {}".format(filename))
 
 def resize2A2(filesname, size_type, tmpdir = "", console = None):
     for filename in filesname:
