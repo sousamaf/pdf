@@ -1,4 +1,5 @@
 import os
+import re
 import click
 import shutil
 import tempfile
@@ -187,6 +188,18 @@ def processor(livro, pagina, termoinicial, termofinal, author, title, subtitle, 
                 # click.secho("Processo concluído")
                 progress.update(task1, advance=15)
 
+def publisher(filesname, re, livro):
+    if len(filesname) > 0:
+        for f in filesname:
+            if check_if_exists(f):
+                print("Publicando o arquivo {} no livro {}".format(f, livro))
+                # to_nas(filename, livro)
+                # to_alfresco(filename, livro)
+
+    # res = [f for f in os.listdir(path) if re.search(r'(abc|123|a1b).*\.txt$', f)]
+# for f in res:
+#     print f
+
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version='0.3.0')
 def pdf():
@@ -253,7 +266,16 @@ def to_alfresco(filename, livro):
 @click.option("--subtitle", type=str, default="")
 @click.option("--dupla", "-d", is_flag=True, default=False)
 def process(livro, pagina, termoinicial, termofinal, author, title, subtitle, dupla):
+    """Realiza o processamento completo dos arquivos de entrada."""
     processor(livro, pagina, termoinicial, termofinal, author, title, subtitle, dupla)
+
+@pdf.command()
+@click.argument('filename', type=str, nargs=-1)
+@click.option("--re", type=str, required=False, help="Expressão Regular para buscar arquivos.")
+@click.option("--livro", "-l", required=True, help="Número do livro.")
+def publish(filename, re, livro):
+    """Realiza a publicação de arquivo ou lista de arquivos no NAS e Alfresco."""
+    publisher(filename, re, livro)
 
 if __name__ == '__main__':
     console = Console()
