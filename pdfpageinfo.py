@@ -9,8 +9,7 @@ import argparse
 import fitz 
 from rich.console import Console
 
-
-def get_valid_format(value):
+def get_valid_format(value, console = None):
     valid_format = []
     for i in range(0, 11):
         valid_format.append("a{}".format(i))
@@ -30,22 +29,16 @@ def get_valid_format(value):
 
     if value is None:
         if console:
-            console.log("[green]Definindo a dimensão da folha:[/green] a2")
-        else:    
-            print("Definindo a dimensão da folha: a2")
+            console.print("[green]Definindo o tamanho da página: a2[/green]")
         return "a2"
 
     if value.lower() in valid_format:
         if console:
-            console.log("[green]Definindo a dimensão da folha:[/green] {}".format(value.lower()))
-        else:
-            print("Formato de destino: {}".format(value.lower()))
+            console.print("[green]Formato de destino: {}[/green]".format(value.lower()))
         return value
     else:
         if console:
-            console.log("[red]Formato não reconhecido.[/red] Será utilizado o formato de destino padrão: a2")
-        else:
-            print("Formato não reconhecido. Será utilizado o formato de destino padrão: a2")
+            console.print("[green]Formato não reconhecido. Serã utilizado: a2[/green]")
         return "a2"
 
 def pixel2cm(value):
@@ -55,16 +48,17 @@ def info(filesname, console = None):
     for filename in filesname:
         try:
             if console:
-                console.log("[green]Obtendo metadados do arquivo:[/green] {}".format(filename))
+                console.print("[green]Obtendo metadados do arquivo: {}[/green]".format(filename))
             doc = fitz.open(filename)
-            for i in range(doc.pageCount):
+            for i in range(doc.page_count):
                 page = doc.load_page(i)
                 if console:
-                    console.log("[green]Página {}:[/green] {} cm x {} cm.".format(i, pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
-            #print(dir(doc))
+                    console.print("[green]Página {}: {} cm x {} cm.[/green]".format(i,pixel2cm(page.rect.height), pixel2cm(page.rect.width)))
         except:
             if console:
-                console.log("[green]Erro ao tentar abrir o arquivo:[/green] {}".format(filename))
+                console.print("[green]Erro ao processar arquivo: {}[/green]".format(filename))
+            else:
+                print("Erro ao tentar abrir o arquivo: {}".format(filename))
 
 def resize2A2(filesname, size_type, tmpdir = "", console = None):
     for filename in filesname:
@@ -99,6 +93,7 @@ def get_filesname(pdfargs):
     return list(filesname)
     
 def main():
+    console = Console()
     help_dim = """
         Redimensiona as páginas do arquivo. O tamanho padrão é o A2, mas é possível especificar outros formatos. Dimensões reconhecidas pelo sistema:
         - de a0 até a10; 
@@ -128,7 +123,7 @@ def main():
     filesname = []
 
     if args.resize is not False:
-        default_size = get_valid_format(args.resize)
+        default_size = get_valid_format(args.resize, console = console)
         is_resize = True
 
     if args.input is not None:
@@ -140,9 +135,9 @@ def main():
             filesname.append(item)
 
     if len(filesname) > 0:
-        info(filesname)
+        info(filesname, console = console)
         if is_resize:
-            resize2A2(filesname, default_size)
+            resize2A2(filesname, default_size, console=console)
 
 if __name__ == '__main__':
     main()
